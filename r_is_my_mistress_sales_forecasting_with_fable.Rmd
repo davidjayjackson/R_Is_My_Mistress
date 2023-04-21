@@ -7,14 +7,11 @@ date: "2023-04-21"
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
-library(fable)
+library(fable) # forecasting package
 library(lubridate)
 library(plotly)
 library(rsample)
-# library(dlookr)
 library(tsibble)
-library(feasts)
-library(forecast)
 library(RSQLite)
 library(scales)
 ```
@@ -47,30 +44,43 @@ sales %>% group_by(flow) |>
 Use R/tidyverse/lubridate to create a yearly date series (YYYY-MM-DD) beginning with 2010 and ending with 2020 and repeating the data series till the end of the data frame. 
 
 ```{r}
-# # determine number of rows
-# n_rows <- nrow(sales)
-# 
-# # create date series
-# date_series <- seq(from = ymd("2000-01-01"), to = ymd("2020-12-31"), by = "years")
-# date_series <- date_series[rep(1:length(date_series), each = n_rows)]
-# 
-# # add date series to sales data frame
-# sales <- sales %>% 
-#   mutate(date = date_series)
+imports <- sales %>% filter(flow =="Import")
+exports <- sales %>% filter(flow =="Export")
+
+```
+
+#### Create yearly date seq for exports
+
+```{r}
+set.seed(9999)
+start_date <- as.Date("2000-01-01")
+end_date <- as.Date("2020-12-31")
+n_rows <- nrow(exports)
+yearly_seq <- seq(start_date, end_date, length.out = n_rows)
+
+exports$yearly_date <- yearly_seq
+exports$yearly_date <- as.character(exports$yearly_date)
+dbWriteTable(db,"exports",exports,overwrite =TRUE)
+exports$yearly_date <- as.Date(exports$yearly_date)
+```
+
+## Plot Row counts based on the yearly_date column
+#### Begin Analysis of Exports
+
+```{r}
+exports_daily <- dbGetQuery(db,"SELECT * FROM exports_daily;")
+exports_daily$yearly_date <-ymd(exports_daily$yearly_date)
+
+```
+```{r}
+summary(exports_daily)
+            
 ```
 
 ```{r}
-
-# determine number of rows
-n_rows <- nrow(sales)
-
-# create date series
-date_series <- seq(from = ymd("2000-01-01"), to = ymd("2020-12-31"), by = "days")
-date_series <- date_series[rep(1:length(date_series), each = n_rows)]
-
-# add date series to sales data frame
-sales <- sales %>% 
-  mutate(date = date_series)
-
+exports_daily |> filter(yearly_date !="2020-12-31") %>%
+ggplot() + geom_col(aes(x=yearly_date,y=total_sales))
 ```
+
+
 
