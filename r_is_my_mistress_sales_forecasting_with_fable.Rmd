@@ -1,0 +1,76 @@
+---
+title: '"R" It My Mistress (sales forecasting)'
+output: html_document
+date: "2023-04-21"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(fable)
+library(lubridate)
+library(plotly)
+library(rsample)
+# library(dlookr)
+library(tsibble)
+library(feasts)
+library(forecast)
+library(RSQLite)
+library(scales)
+```
+
+## Import data from SQLite3 database
+
+```{r}
+rm(list=ls())
+db <- dbConnect(SQLite(), dbname="/Users/Owner/Documents/GitHub/RIMBOUKARI/commodity_trade.sqlite3")
+```
+```{r}
+sales <- dbGetQuery(db,"SELECT flow,trade_usd FROM commodity;")
+```
+```{r}
+sales %>% count(flow) %>% ggplot(aes(x=flow,y=n)) +
+  geom_col() + labs(title="Row Count by Flow") +
+  scale_y_continuous(label = comma)
+```
+
+```{r}
+sales %>% group_by(flow) |> 
+  summarise(total = sum(trade_usd)) |>
+  ggplot(aes(x=flow,y=total)) + geom_col() +
+  labs(title="Toal Sales(USD) by Flow") +
+  scale_y_continuous(label = comma)
+```
+
+### Create repeating yearly date series
+
+Use R/tidyverse/lubridate to create a yearly date series (YYYY-MM-DD) beginning with 2010 and ending with 2020 and repeating the data series till the end of the data frame. 
+
+```{r}
+# # determine number of rows
+# n_rows <- nrow(sales)
+# 
+# # create date series
+# date_series <- seq(from = ymd("2000-01-01"), to = ymd("2020-12-31"), by = "years")
+# date_series <- date_series[rep(1:length(date_series), each = n_rows)]
+# 
+# # add date series to sales data frame
+# sales <- sales %>% 
+#   mutate(date = date_series)
+```
+
+```{r}
+
+# determine number of rows
+n_rows <- nrow(sales)
+
+# create date series
+date_series <- seq(from = ymd("2000-01-01"), to = ymd("2020-12-31"), by = "days")
+date_series <- date_series[rep(1:length(date_series), each = n_rows)]
+
+# add date series to sales data frame
+sales <- sales %>% 
+  mutate(date = date_series)
+
+```
+
